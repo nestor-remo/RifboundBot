@@ -3,13 +3,16 @@ from discord.ext import commands
 import os
 import json
 from dotenv import load_dotenv
+from discord import File
+import aiohttp
+import io
 load_dotenv()
 
 intents = discord.Intents.default()
 intents.message_content = True
 intents.members = True
 
-bot = commands.Bot(command_prefix="$", intents=intents)
+bot = commands.Bot(command_prefix="/", intents=intents)
 
 
 
@@ -55,6 +58,18 @@ async def get_card_info(context, *, card_name):
         response = "\n".join(info_lines)
     else:
         response = f"Card '{card_name}' not found."
-    await context.send(response)
+
+    print(card_info.get('id'))
+    image_url = f"https://cdn.rgpub.io/public/live/map/riftbound/latest/OGN/cards/{card_info['id']}/full-mobile.avif"
+    print(image_url)
+
+    async with aiohttp.ClientSession() as session:
+        async with session.get(image_url) as resp:
+            if resp.status == 200:
+                data = io.BytesIO(await resp.read())
+                file = File(data, filename="card_image.avif")
+                await context.send(response, file=file)
+            else:
+                await context.send(f"{response}\n(Note: Unable to fetch image from URL)")
 
 bot.run(os.getenv("DISCORD_BOT_TOKEN"))
